@@ -3,21 +3,17 @@
 """
 ObisRenamer – rekursives Dateiumbenennen nach INI-Vorlagen.
 - Muster/Präfix je Tiefe (level1, level2, …) aus INI ([patterns]).
-- Platzhalter (für [patterns] *und* [DB]):
+- Platzhalter für [patterns]:
     %root% / %folder%        : Name des Start-Roots
     %rootN% / %folderN%      : N-tes Ordnersegment ab Root (1-basiert)
     %rootNB% / %folderNB%    : wie oben, aber nur der erste Buchstabe (upper)
-    %datum% / %date%         : YYYYMMDD / YYYY-MM-DD (bei [patterns] aus Datei, bei [DB] = aktuelles Datum)
-    %wert%                   : alter Dateiname (ohne Endung) – nur in [patterns] sinnvoll
-    %N%                      : Ziffernfolge aus *aktuellem Ordnernamen* (z.B. „Lektion3“ -> „3“).
-                               Mehrfach (%N%%N% …) = Null-Auffüllung auf die Anzahl der Platzhalter (z.B. „03“).
+    %datum% / %date%         : YYYYMMDD / YYYY-MM-DD (aus Datei-Zeitstempel)
+    %wert%                   : alter Dateiname (ohne Endung)
+    %N%                      : Ziffernfolge aus *aktuellem Ordnernamen* (z.B. „Lektion3" -> „3").
+                               Mehrfach (%N%%N% …) = Null-Auffüllung auf die Anzahl der Platzhalter (z.B. „03").
                                Wenn keine Ziffern vorhanden: entsprechend viele Nullen.
 - Nummerierung pro Ordner *und* Dateiendung neu (01, 02, …), Breite konfigurierbar.
 - Excludes: komplette Ordner (rekursiv), Dateitypen (Endungen), Einzeldateien (Basename).
-- Pro Ordner mit Umbenennungen kann eine Markdown-Dokumentation geschrieben werden:
-  * Klassisch: fester Dateiname (options.data_name_filename)
-  * Template-Modus ([DB]): pro Ebene eigener Name via level1/2/…
-    → Umschaltbar über options.data_name_template = true/false
 """
 
 from __future__ import annotations
@@ -28,7 +24,7 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple, Iterable
+from typing import Dict, List, Tuple
 
 # ------------------------- Hilfsfunktionen -------------------------
 
@@ -65,20 +61,9 @@ def load_config(path: Path) -> dict:
                 lvl = int(m.group(1))
                 patterns[lvl] = val.strip().strip(' \t`"\'')
 
-    # DB-Dateinamen-Templates (optional)
-    db_templates: Dict[int, str] = {}
-    if cp.has_section("DB"):
-        for key, val in cp.items("DB"):
-            m = re.fullmatch(r"level(\d+)", key.strip(), flags=re.IGNORECASE)
-            if m:
-                lvl = int(m.group(1))
-                db_templates[lvl] = val.strip().strip(' \t`"\'')
-
     # Optionen
     opt = dict(
         numbering_width = 2,
-        data_name_filename = "Data-Name der Umbenennung.md",
-        data_name_template = False,   # Schalter für [DB]-Modus
         use_birthtime = False,
         dry_run_note_limit = 2000,  # Schutz gegen zu große Konsolenlogs
     )
@@ -88,12 +73,8 @@ def load_config(path: Path) -> dict:
                 opt["numbering_width"] = int(cp.get("options", "numbering_width"))
             except ValueError:
                 pass
-        if cp.has_option("options", "data_name_filename"):
-            opt["data_name_filename"] = cp.get("options", "data_name_filename").strip().strip('`"\'')
         if cp.has_option("options", "use_birthtime"):
             opt["use_birthtime"] = cp.getboolean("options", "use_birthtime", fallback=False)
-        if cp.has_option("options", "data_name_template"):
-            opt["data_name_template"] = parse_bool(cp.get("options", "data_name_template"), default=False)
 
     # Excludes
     excludes = dict(folders=[], filetypes=[], filenames=[])
@@ -104,7 +85,7 @@ def load_config(path: Path) -> dict:
         excludes["filetypes"] = [s.lower() if s.startswith(".") else f".{s.lower()}" for s in normalize_list(raw_ft)]
         excludes["filenames"] = normalize_list(cp.get("excludes", "filenames", fallback=cp.get("excludes", "exclude_data", fallback="")))
 
-    return {"patterns": patterns, "db_templates": db_templates, "options": opt, "excludes": excludes}
+    return {"patterns": patterns, "options": opt, "excludes": excludes}
 
 def creation_date(path: Path, use_birthtime: bool) -> float:
     """Liefert bevorzugt 'Erstellzeitpunkt' (wenn OS unterstützt), sonst mtime."""
@@ -121,10 +102,6 @@ def creation_date(path: Path, use_birthtime: bool) -> float:
 def format_date(ts: float) -> Tuple[str, str]:
     t = time.localtime(ts)
     return time.strftime("%Y%m%d", t), time.strftime("%Y-%m-%d", t)  # (%datum%, %date%)
-
-def today_strings() -> Tuple[str, str]:
-    t = time.localtime()
-    return time.strftime("%Y%m%d", t), time.strftime("%Y-%m-%d", t)
 
 def rel_parts(root: Path, p: Path) -> List[str]:
     rel = p.relative_to(root)
@@ -187,15 +164,6 @@ def render_pattern_prefix(pattern: str, file_path: Path, root: Path, parent_part
     curr_dirname = parent_parts[-1] if parent_parts else base_root
     return _expand_common_placeholders(pattern, base_root=base_root, parent_parts=parent_parts, dt_compact=dt_compact, dt_iso=dt_iso, stem=stem, curr_dirname=curr_dirname)
 
-def render_db_filename(pattern: str, root: Path, parent_parts: List[str]) -> str:
-    """Platzhalterersetzung für [DB] (Dokumentationsdatei)."""
-    base_root = root.name
-    dt_compact, dt_iso = today_strings()  # aktuelles Datum
-    curr_dirname = parent_parts[-1] if parent_parts else base_root
-    # In [DB] ist %wert% unlogisch -> None
-    name = _expand_common_placeholders(pattern, base_root=base_root, parent_parts=parent_parts, dt_compact=dt_compact, dt_iso=dt_iso, stem=None, curr_dirname=curr_dirname)
-    return name
-
 def natural_key(s: str) -> List:
     return [int(t) if t.isdigit() else t.lower() for t in re.split(r"(\d+)", s)]
 
@@ -236,20 +204,15 @@ def should_skip_dir(dir_name: str, exclude_dirs: List[str]) -> bool:
 
 def run(root: Path, cfg: dict, dry_run: bool) -> int:
     patterns: Dict[int, str] = cfg["patterns"]
-    db_templates: Dict[int, str] = cfg.get("db_templates", {})
     opts = cfg["options"]
     excl = cfg["excludes"]
 
     numbering_width = int(opts.get("numbering_width", 2))
-    fixed_data_md_name = opts.get("data_name_filename", "Data-Name der Umbenennung.md")
     use_birthtime = bool(opts.get("use_birthtime", False))
-    use_db_templates = bool(opts.get("data_name_template", False))
 
     exclude_dirs = set(excl.get("folders", []))
     exclude_exts = set(excl.get("filetypes", []))          # mit führendem Punkt, lower()
     base_exclude_names = set(excl.get("filenames", []))
-    # Altes Standard-Notizfile nie umbenennen (falls vorhanden)
-    base_exclude_names.add(fixed_data_md_name)
 
     total_renamed = 0
     printed = 0
@@ -268,22 +231,10 @@ def run(root: Path, cfg: dict, dry_run: bool) -> int:
         if not pattern:
             continue  # Ebene ignorieren
 
-        # Optionalen DB-Dateinamen im Voraus bestimmen und lokal von Umbenennungen ausschließen
-        doc_name = None
-        if use_db_templates:
-            tmpl = db_templates.get(depth, "").strip()
-            if tmpl:
-                doc_name = render_db_filename(tmpl, root, parent_rel)
-                # Keine zusätzliche Formatierung erzwingen; .md wird vom Benutzer vorgegeben
-        # Lokale Excludes inkl. der ggf. vorhandenen Ziel-Notiz
-        exclude_names = set(base_exclude_names)
-        if doc_name:
-            exclude_names.add(doc_name)
-
         # Dateien filtern
         entries = []
         for name in files:
-            if name in exclude_names:
+            if name in base_exclude_names:
                 continue
             ext = Path(name).suffix.lower()
             if ext in exclude_exts:
@@ -301,7 +252,7 @@ def run(root: Path, cfg: dict, dry_run: bool) -> int:
             by_ext[ext].sort(key=natural_key)
 
         # Existierende Namen im Ordner (für Kollisionsprüfung)
-        existing_now = set(entries) | exclude_names  # nur betrachtete Dateien
+        existing_now = set(entries) | base_exclude_names  # nur betrachtete Dateien
 
         renames: List[Tuple[Path, Path]] = []
         reserved_targets: set = set()
@@ -340,17 +291,6 @@ def run(root: Path, cfg: dict, dry_run: bool) -> int:
         else:
             two_phase_rename(renames)
             total_renamed += len(renames)
-
-            # Markdown-Notiz schreiben (nur dieser Ordner), wenn eingeschaltet
-            if use_db_templates:
-                # Falls kein Template für diese Ebene gesetzt war, auf festen Namen zurückfallen
-                note_filename = doc_name if doc_name else fixed_data_md_name
-                files_after = sorted(
-                    [p.name for p in curr.iterdir() if p.is_file() and p.name != note_filename],
-                    key=natural_key,
-                )
-                content = "# Umbenannte Dateien in diesem Verzeichnis\n\n" + "\n".join(f"![[{n}]]" for n in files_after)
-                (curr / note_filename).write_text(content + ("\n" if content else ""), encoding="utf-8")
 
     if dry_run:
         return 0

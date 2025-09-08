@@ -1,3 +1,16 @@
+---
+Datum: '2025-08-30'
+Projekt: IUFS
+Section: IDBS01-P25ObisDatabase
+Task: P25ObisDatabase
+Semester: SE1
+Courses: IDBS01
+tags:
+- P25ObisDatabase
+- ObisDatabase-Attribute
+link1: '[[ObisDatabase-Attribute]]'
+link2: '[[P25ObisDatabase]]'
+---
 
 * **Datum**
 * **Projekt**

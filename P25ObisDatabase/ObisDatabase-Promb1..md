@@ -1,11 +1,15 @@
 ---
-Datum: '2025-08-21'
-Projekt: Wiki
-field: Blobbite
+Datum: '2025-08-30'
+Projekt: IUFS
+Section: IDBS01-P25ObisDatabase
+Task: P25ObisDatabase
+Semester: SE1
+Courses: IDBS01
 tags:
-- Wiki
-- P24Python-OBSIDION
-link1: ''
+- P25ObisDatabase
+- ObisDatabase-Promb1.
+link1: '[[ObisDatabase-Promb1.]]'
+link2: '[[P25ObisDatabase]]'
 ---
 
 # Vollständiger Prompt: YAML-Frontmatter Manager mit Konfigurationsdatei

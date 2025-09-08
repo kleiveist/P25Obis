@@ -43,7 +43,7 @@ except Exception:  # pragma: no cover
     raise
 
 # ------------------------ Konstanten ------------------------
-CONFIG_FILENAME = "YAML.ini"
+CONFIG_FILENAMES = ("ObisDatabase.ini", "ObisDatabase-Timetable.ini", "ObisDatabase-Klausur.ini", "ObisDatabase-Skript.ini", "YAML.ini")
 FRONTMATTER_DELIM = "---"
 SENTINEL_EMPTY = "=leer="
 KEEP_TOKEN = "%wert%"
@@ -111,9 +111,15 @@ class Settings:
 # ------------------------ YAML-INI Laden ------------------------
 
 def load_config(root: Path) -> Tuple[Settings, Dict[str, Any]]:
-    ini_path = root / CONFIG_FILENAME
-    if not ini_path.is_file():
-        sys.stderr.write(f"[FEHLER] {CONFIG_FILENAME} nicht gefunden in {root}\n")
+    ini_path: Path | None = None
+    for name in CONFIG_FILENAMES:
+        candidate = root / name
+        if candidate.is_file():
+            ini_path = candidate
+            break
+    if ini_path is None:
+        opts = " oder ".join(CONFIG_FILENAMES)
+        sys.stderr.write(f"[FEHLER] Keine Konfigurationsdatei gefunden ({opts}) in {root}\n")
         sys.exit(2)
 
     try:
@@ -358,6 +364,16 @@ def is_excluded(md_path: Path, exclude_folders: Iterable[str]) -> bool:
     return False
 
 # ------------------------ Hauptlogik ------------------------
+def find_anchor_by_name(exec_base: Path, md_path: Path, anchor_name: str) -> Path | None:
+    p = md_path.parent.resolve()
+    eb = exec_base.resolve()
+    # nur innerhalb des --root suchen
+    for ancestor in [p, *p.parents]:
+        if ancestor == eb.parent:  # außerhalb von --root stoppen
+            break
+        if ancestor.name == anchor_name:
+            return ancestor
+    return None
 
 def process_md(md_path: Path, template: Dict[str, Any], *, exec_base: Path, settings: Settings) -> bool:
     text = read_text(md_path)
@@ -366,10 +382,11 @@ def process_md(md_path: Path, template: Dict[str, Any], *, exec_base: Path, sett
     # Anker bestimmen
     base = exec_base
     if settings.base_root:
-        base = (exec_base / settings.base_root).resolve()
-        if settings.scope_under_base_root:
-            if base not in md_path.resolve().parents and md_path.parent.resolve() != base:
-                return False  # außerhalb des Scopes
+        anchor = find_anchor_by_name(exec_base, md_path, settings.base_root)
+        if settings.scope_under_base_root and anchor is None:
+            return False  # Datei liegt nicht unter einem 'Skript'-Ordner
+        if anchor is not None:
+            base = anchor  # Anker = das konkrete 'Skript' über der Datei
 
     # Pfadebenen
     folder_levels_up = compute_folder_levels_up(md_path)
