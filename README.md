@@ -38,9 +38,9 @@ Die **Obis Tools** standardisieren Dateinamen, Metadaten (YAML‑Frontmatter) un
 - **Designprinzipien:** Idempotenz, klare Ebenenlogik, minimale Konfiguration.
 
 Weiterführende Doku pro Modul:
-- 📘 **ObisDatabase – Guide:** [`./ObisDatabase-Guide.md`](./ObisDatabase-Guide.md)
-- 📘 **ObisRenamer – Guide:** [`./ObisRenamer-Guide.md`](./ObisRenamer-Guide.md)
-- 📘 **P25ObisLinks – Guide:** [`./P25ObisLinks-Guide.md`](./P25ObisLinks-Guide.md)
+- 📘 **ObisDatabase – Guide:** [P25ObisDatabase/ObisDatabase-Guide.md](P25ObisDatabase/ObisDatabase-Guide.md)
+- 📘 **ObisRenamer – Guide:** [P25ObisRenamer/ObisRenamer-Guide.md](P25ObisRenamer/ObisRenamer-Guide.md)
+- 📘 **P25ObisLinks – Guide:** [P25ObisLinks/P25ObisLinks-Guide.md](P25ObisLinks/P25ObisLinks-Guide.md)
 
 ---
 
