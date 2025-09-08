@@ -1,211 +1,229 @@
-# YAML Frontmatter Manager
+# Obis Tools – Projektübersicht
 
-Ein Python-Tool zur automatischen Verwaltung von YAML-Frontmatter in Markdown-Dateien basierend auf einer konfigurierbaren Template-Datei.
+> Sammlung schlanker Python‑Skripte zur Verwaltung von Markdown‑Repos/Vaults (Obsidian‑kompatibel):
+>
+> - **ObisDatabase** – YAML‑Frontmatter Manager
+> - **ObisRenamer** – Deterministischer Datei‑Renamer
+> - **P25ObisLinks** – Automatische Index/Links‑Generatoren
 
-## 🚀 Features
+---
 
-- **Template-basiert**: Definiere dein YAML-Frontmatter einmal in `YAML.ini`
-- **Dynamische Platzhalter**: Automatische Ersetzung von Ordnernamen, Datum und mehr
-- **Konsistente Reihenfolge**: Die Position in der Template-Datei bestimmt die Ausgabereihenfolge
-- **Flexible Modi**: Strict-Modus für vollständige Kontrolle oder Merge-Modus für Kompatibilität
-- **Rekursive Verarbeitung**: Durchsucht automatisch alle Unterordner
-- **Whitelist-Unterstützung**: Behalte bestimmte Felder auch im Strict-Modus
+## Inhaltsverzeichnis
 
-## 📋 Voraussetzungen
+1. Überblick
+2. Features
+3. Module
+   - 3.1 ObisDatabase
+   - 3.2 ObisRenamer
+   - 3.3 P25ObisLinks
+4. Installation & Systemvoraussetzungen
+5. Quickstart
+6. Repository‑Struktur
+7. Konfiguration (INI/YAML)
+8. Zusammenspiel der Module (Pipelines)
+9. CLI‑Referenz (Kurz)
+10. Best Practices
+11. Troubleshooting (Kurz)
+12. Roadmap
+13. Beiträge/Contributing
+14. Lizenz
 
-- Python 3.7+
-- PyYAML
+---
+
+## 1) Überblick
+
+Die **Obis Tools** standardisieren Dateinamen, Metadaten (YAML‑Frontmatter) und Ordner‑Indexe in Markdown‑Repos. Fokus: deterministische Ergebnisse, reproduzierbare Regeln, einfache Abhängigkeiten, plattformneutral.
+
+- **Zielgruppe:** technische Doku, Studien‑/Lehr‑Vaults, Wissensdatenbanken.
+- **Designprinzipien:** Idempotenz, klare Ebenenlogik, minimale Konfiguration.
+
+Weiterführende Doku pro Modul:
+- 📘 **ObisDatabase – Guide:** [`./ObisDatabase-Guide.md`](./ObisDatabase-Guide.md)
+- 📘 **ObisRenamer – Guide:** [`./ObisRenamer-Guide.md`](./ObisRenamer-Guide.md)
+- 📘 **P25ObisLinks – Guide:** [`./P25ObisLinks-Guide.md`](./P25ObisLinks-Guide.md)
+
+---
+
+## 2) Features
+
+- **Deterministische Pipelines:** Umbenennen → Frontmatter → Index.
+- **Platzhalter‑System:** `%rootN%`, `%folderN%`, `%data%`, `%date%`, `%datum%`, `%wert%`, `%N%` (Ordnernummer‑Extraktion).
+- **Skalierbar:** rekursive Verarbeitung, Ausschlüsse (Ordner/Endungen/Namen).
+- **Sicher:** Dry‑Run (Renamer/Links), zweiphasige Umbenennung, idempotente Frontmatter‑Writes.
+- **Git‑freundlich:** stabile Reihenfolgen, Block‑YAML, klare Diffs.
+
+---
+
+## 3) Module
+
+### 3.1 ObisDatabase (YAML‑Frontmatter)
+- **Script:** `ObisDatabase.py`
+- **Aufgabe:** Setzt/aktualisiert YAML‑Frontmatter anhand einer Vorlage (INI/YAML) mit strikter Feldreihenfolge.
+- **Modi:** `strict` (Whitelist für Extra‑Keys) und `merge`.
+- **Anker/Scope:** `base_root` + `scope_under_base_root` beschränken den Wirkungsbereich.
+- **Guide:** [`./ObisDatabase-Guide.md`](./ObisDatabase-Guide.md)
+
+### 3.2 ObisRenamer (Datei‑Renamer)
+- **Script:** `ObisRenamer.py`
+- **Aufgabe:** deterministisches Umbenennen nach Ebenen‑Patterns (`levelN`) und Platzhaltern; Nummerierung pro Ordner **und** Dateiendung.
+- **Sicherheit:** zweiphasige Umbenennung, Kollision‑Suffix `_2`, `_3` …
+- **Dry‑Run:** `--dry` zeigt geplante Änderungen.
+- **Guide:** [`./ObisRenamer-Guide.md`](./ObisRenamer-Guide.md)
+
+### 3.3 P25ObisLinks (Index/Links)
+- **Script:** `P25ObisLinks.py` (benannt wie im Guide; einfache Standardbibliothek)
+- **Aufgabe:** erzeugt/aktualisiert Ordner‑Indexseiten mit Sektionen `#Folder`, `#Markdown`, `#Files` zwischen Marker‑Blöcken.
+- **Dry‑Run:** `--dry-run` simuliert die Änderungen.
+- **Guide:** [`./P25ObisLinks-Guide.md`](./P25ObisLinks-Guide.md)
+
+---
+
+## 4) Installation & Systemvoraussetzungen
+
+- **Python:** 3.8+ (3.6 kompatibel, empfohlen ≥3.8).
+- **Abhängigkeiten:**
+  - `ObisDatabase.py`: `PyYAML` (`pip install pyyaml`)
+  - `ObisRenamer.py`: Standardbibliothek
+  - `P25ObisLinks.py`: Standardbibliothek
+- **Empfehlung:** Git für Backups/Diffs.
 
 ```bash
+# global
+python --version
+
+# Dependency für ObisDatabase
 pip install pyyaml
 ```
 
-## 🛠 Installation
-
-1. Repository klonen:
-```bash
-git clone https://github.com/username/yaml-frontmatter-manager.git
-cd yaml-frontmatter-manager
-```
-
-2. Dependencies installieren:
-```bash
-pip install -r requirements.txt
-```
-
-## 📖 Verwendung
-
-### Grundlegende Verwendung
-
-1. Erstelle eine `YAML.ini` Datei in deinem Projektverzeichnis
-2. Führe das Skript aus:
-
-```bash
-python yaml_manager.py
-```
-
-Das Skript verarbeitet automatisch alle `.md` Dateien im aktuellen Verzeichnis und allen Unterordnern.
-
-### Erweiterte Optionen
-
-```bash
-# Bestimmtes Verzeichnis als Root verwenden
-python yaml_manager.py --root /path/to/your/markdown/files
-
-# Dry-run (zeigt Änderungen ohne sie durchzuführen)
-python yaml_manager.py --dry-run
-
-# Verbose Output
-python yaml_manager.py --verbose
-```
-
-## 📄 YAML.ini Konfiguration
-
-### Basis-Template
-
-```yaml
-# Grundlegende Metadaten (Reihenfolge bestimmt Ausgabe!)
-Datum: %datum%
-Projekt: MeinProjekt
-field: %folder0%
-tags:
-  - %folder1%
-  - Wiki
-  - =leer=
-
-# Settings (optional)
-*settings:
-  key_mode: strict
-  keep_extra_keys: ["rank", "custom-*"]
-  exclude_folders: [".git", ".obsidian", "node_modules"]
-```
-
-### Verfügbare Platzhalter
-
-#### Pfad-Platzhalter
-| Platzhalter | Beschreibung |
-|-------------|--------------|
-| `%data%` | Name der aktuellen Datei |
-| `%folder%` | Root-Verzeichnis (wo Skript ausgeführt wird) |
-| `%folder0%` | Direkter Elternordner der .md-Datei |
-| `%folder1%`, `%folder2%`, ... | N Ebenen über der .md-Datei |
-| `%root0%`, `%root1%`, ... | Pfad vom Start-Root nach unten |
-
-#### Spezielle Platzhalter
-| Platzhalter          | Beschreibung                  |
-| -------------------- | ----------------------------- |
-| `%datum%` / `%date%` | Erstellungsdatum (YYYY-MM-DD) |
-| `%wert%`             | Vorhandenen Wert beibehalten  |
-| `=leer=`             | Leeren String setzen          |
-
-#### Ordnerstruktur-Beispiel
-
-```
-C:\Projekte\Wiki\           ← %folder% (Skript-Root)
-├── YAML.ini
-├── Universität\            ← %folder2% (von test.md aus)
-│   └── BWL\                ← %folder1% (von test.md aus)
-│       └── Klausuren\      ← %folder0% (von test.md aus)
-│           └── test.md
-```
-
-### Settings-Konfiguration
-
-#### key_mode
-- **`strict`** (Standard): Nur Template-Keys werden geschrieben, andere werden entfernt
-- **`merge`**: Template überschreibt vorhandene Keys, zusätzliche Keys bleiben erhalten
-
-#### keep_extra_keys (nur bei strict)
-Liste von Keys oder Glob-Patterns, die trotz strict-Modus beibehalten werden:
-
-```yaml
-*settings:
-  keep_extra_keys:
-    - rank              # Exakter Key-Name
-    - custom-*          # Alle Keys mit Präfix "custom-"
-    - obsidian_*        # Alle Keys mit Präfix "obsidian_"
-```
-
-#### exclude_folders
-Ordner, die bei der Verarbeitung übersprungen werden:
-
-```yaml
-*settings:
-  exclude_folders: [".git", "node_modules", ".obsidian", ".venv"]
-```
-
-## 📁 Beispiel-Workflow
-
-### Vorher
-```markdown
----
-rank: Altwert
-custom_field: BehaltenWert
 ---
 
-# Meine Notiz
-Inhalt...
+## 5) Quickstart
+
+```bash
+# 1) Backup anlegen
+cp -r Vault Vault-backup-$(date +%Y%m%d)
+
+# 2) (optional) Umbenennen – Dry‑Run prüfen
+python ObisRenamer.py --root ./Vault --dry
+python ObisRenamer.py --root ./Vault
+
+# 3) Frontmatter setzen/aktualisieren
+python ObisDatabase.py --root ./Vault
+
+# 4) Indexe generieren/aktualisieren (Dry‑Run optional)
+python P25ObisLinks.py ./Vault --dry-run
+python P25ObisLinks.py ./Vault
 ```
 
-### YAML.ini
-```yaml
-Datum: %date%
-Projekt: Wiki
-field: %folder0%
-rank: %folder1%
+- Konfigurationen/Guides vorher prüfen:
+  - [`./ObisRenamer-Guide.md`](./ObisRenamer-Guide.md)
+  - [`./ObisDatabase-Guide.md`](./ObisDatabase-Guide.md)
+  - [`./P25ObisLinks-Guide.md`](./P25ObisLinks-Guide.md)
 
-*settings:
-  key_mode: strict
-  keep_extra_keys: ["custom_field"]
-```
-
-### Nachher
-```markdown
 ---
-Datum: '2025-08-21'
-Projekt: Wiki
-field: Klausuren
-rank: BWL
-custom_field: BehaltenWert
----
 
-# Meine Notiz
-Inhalt...
+## 6) Repository‑Struktur (Beispiel)
+
+```
+📂 P25Python-Obis
+├── LICENSE.md
+├── README.md
+├── 📂 P25ObisDatabase/
+│   ├── ObisDatabase.py
+│   ├── ObisDatabase-Guide.md
+│   └── ObisDatabase.ini
+├── 📂 P25ObisRenamer/
+│   ├── ObisRenamer.py
+│   ├── ObisRenamer-Guide.md
+│   └── ObisRenamer.ini
+└── 📂 P25ObisLinks/
+    ├── P25ObisLinks.py
+    └── P25ObisLinks-Guide.md
 ```
 
-## 🔧 Erweiterte Funktionen
+> Hinweis: Archiv‑ und Versionsordner (`.archive`, `V0.0.x`) sind hier verkürzt dargestellt. Die Guides liegen in den jeweiligen Modulordnern.
 
-### Datum-Handling
-Das Skript verwendet intelligente Datum-Erkennung:
-- **macOS/Windows**: Echte "birth time" (Erstellungszeit)
-- **Linux**: Fallback auf Änderungszeit (`mtime`)
+## 7) Konfiguration (INI/YAML) (INI/YAML) (INI/YAML)
 
-### Konsistenz-Garantie
-- Mehrfache Ausführung produziert identische Ergebnisse
-- Keine Duplikation von Feldern
-- Deterministische Reihenfolge
+- **ObisDatabase:** Vorlage + `_settings` (Modus, Whitelist, Excludes, Anker). Platzhalter: `%rootN%`, `%folderN%`, `%data%`, `%date%`/`%datum%`, `%wert%`, `=leer=`.
+- **ObisRenamer:** `[patterns] levelN` pro Tiefe, `[options] numbering_width / use_birthtime`, `[excludes] folders/filetypes/filenames`. Platzhalter: `%rootN%`, `%rootNB%`, `%folder%`, `%N%`, `%date%`/`%datum%`, `%wert%`.
+- **P25ObisLinks:** `SETTINGS` im Script (Excludes, Präfixe, Dot‑Items) – siehe Guide.
 
-## 🐛 Fehlerbehandlung
+Konkrete Beispiele: siehe Modul‑Guides.
 
-Das Skript:
-- Überspringt ungültige YAML-Dateien mit Warnung
-- Erstellt Backups vor Änderungen (optional)
-- Protokolliert alle Änderungen im Verbose-Modus
+---
 
-## 🤝 Beitragen
+## 8) Zusammenspiel der Module (Pipelines)
 
-1. Fork das Repository
-2. Erstelle einen Feature-Branch (`git checkout -b feature/AmazingFeature`)
-3. Committe deine Änderungen (`git commit -m 'Add some AmazingFeature'`)
-4. Push zum Branch (`git push origin feature/AmazingFeature`)
-5. Öffne eine Pull Request
+**Empfohlene Reihenfolge:**
 
-## 📝 Lizenz
+1. **Renamer** – stabile, sortierbare Dateinamen (kontextuelle Präfixe + Nummer).
+2. **Database** – konsistentes Frontmatter aus Vorlage (idempotent).
+3. **Links** – saubere Ordner‑Indexe mit Ordner/Markdown/Files‑Sektionen.
 
-Dieses Projekt ist unter der MIT-Lizenz lizenziert - siehe [LICENSE](LICENSE) Datei für Details.
+**Varianten:**
+- Bei existierender starker Frontmatter‑Struktur: Database zuerst, Renamer optional.
+- Für reine Link‑Übersichten: nur P25ObisLinks ausführen.
 
+---
 
-## 🙏 Danksagungen
+## 9) CLI‑Referenz (Kurz)
 
-- Inspiriert durch die Bedürfnisse beim Management von Obsidian Vaults
-- Dank an die Python-Community für PyYAML
+### ObisDatabase
+```bash
+python ObisDatabase.py [--root PATH]
+```
+
+### ObisRenamer
+```bash
+python ObisRenamer.py [--root PATH] [--config PATH] [--dry]
+```
+
+### P25ObisLinks
+```bash
+python P25ObisLinks.py [ROOT] [--dry-run]
+```
+
+---
+
+## 10) Best Practices
+
+- **Immer Backup/Git‑Commit** vor einem Run.
+- **Dry‑Run** beim Renamer/Links, dann Stichproben prüfen.
+- **Strikte Templates** (Database) mit minimaler Whitelist.
+- **Excludes** früh setzen (`.git`, `node_modules`, `.venv`, `.obsidian`, `__pycache__`, `.archive`).
+- **ISO‑Daten/Block‑YAML** für saubere Diffs und Dataview‑Kompatibilität.
+
+---
+
+## 11) Troubleshooting (Kurz)
+
+- **PyYAML fehlt:** `pip install pyyaml` (für ObisDatabase).
+- **Keine Änderungen im Renamer‑Dry‑Run:** passendes `levelN` fehlt oder Excludes greifen zu stark.
+- **Falsches Datum:** `use_birthtime` (OS‑abhängig), sonst `mtime`.
+- **Marker/Index fehlt:** P25ObisLinks erzeugt Datei neu; bestehender Inhalt außerhalb der Marker bleibt erhalten.
+
+→ Details und Checklisten: Modul‑Guides.
+
+---
+
+## 12) Roadmap
+
+- Optionales **DB‑Generator‑Addon** (Data‑*.md) als separates Modul.
+- Zusätzliche Platzhalter/Funktionen im Renamer.
+- Tests & CI (Smoke/Dry‑Run auf Beispielvault).
+
+---
+
+## 13) Beiträge / Contributing
+
+1. Fork & Branch (`feature/…`).
+2. Lint/Format (PEP8‑konform, kurze Funktionen, keine Fremd‑Deps ohne Not).
+3. PR mit kurzen Before/After‑Beispielen (Screens/Diffs).
+
+---
+
+## 14) Lizenz
+
+MIT – siehe [`LICENSE.md`](./LICENSE.md).
+

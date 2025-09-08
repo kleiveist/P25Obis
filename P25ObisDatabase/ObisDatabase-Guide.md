@@ -1,307 +1,320 @@
 ---
-Datum: '2025-08-30'
+Datum: '2025-09-08'
 Projekt: IUFS
 Section: IDBS01-P25ObisDatabase
 Task: P25ObisDatabase
 Semester: SE1
 Courses: IDBS01
-tags:
-- P25ObisDatabase
-- ObisDatabase-Guide
-link1: '[[ObisDatabase-Guide]]'
-link2: '[[P25ObisDatabase]]'
+Tags:
+- ObisDatabase
+- Guide
+- Überarbeitet
 ---
 
-# ObisDatabase - Vollständige Benutzeranleitung
-## YAML-Frontmatter Manager für Obsidian
+# ObisDatabase – Technischer Leitfaden (Überarbeitet)
 
-## 📋 Inhaltsverzeichnis
-1. [Übersicht](#übersicht)
-2. [Installation und Setup](#installation-und-setup)
-3. [Grundlegende Verwendung](#grundlegende-verwendung)
-4. [Konfigurationsdatei verstehen](#konfigurationsdatei-verstehen)
-5. [Das Platzhalter-System](#das-platzhalter-system)
-6. [Praktische Beispiele](#praktische-beispiele)
-7. [Settings und Modi](#settings-und-modi)
-8. [Fortgeschrittene Techniken](#fortgeschrittene-techniken)
-9. [Troubleshooting](#troubleshooting)
-10. [Best Practices](#best-practices)
+> YAML‑Frontmatter‑Manager für Markdown/Obsidian. Fokus: konsistente Metadaten, deterministische Ausgabe, skalierbar für große Vaults/Repos.
 
 ---
 
-## 🎯 Übersicht
+## Inhaltsverzeichnis
 
-ObisDatabase ist ein intelligentes Python-Tool zur automatischen Verwaltung von YAML-Frontmatter in Markdown-Dateien. Es wurde speziell für Obsidian-Nutzer entwickelt, die konsistente Metadaten über große Dokumentensammlungen hinweg benötigen.
-
-### Kernfunktionen:
-- **Automatisches Frontmatter-Management** nach konfigurierbaren Vorlagen
-- **Dynamische Platzhalter** für Pfade, Daten und Dateinamen
-- **Zwei Arbeitsmodi** (strict/merge) für verschiedene Anwendungsfälle
-- **Intelligente Pfad-Platzhalter** (aufwärts und abwärts)
-- **Konsistenz-Garantie** bei wiederholter Ausführung
-- **Flexible Ausschluss-Filter**
-
-### Typische Anwendungsfälle:
-- 📚 **Wissensmanagement**: Automatische Kategorisierung von Notizen
-- 🎓 **Studienmaterialien**: Semester/Kurs-Zuordnung
-- 📂 **Projektdokumentation**: Konsistente Metadaten
-- 🏷️ **Tag-Management**: Automatische Tag-Vergabe basierend auf Ordnerstruktur
-- 🔗 **Link-Netzwerke**: Automatische Backlinks und Verweise
+1. Überblick und Zweck
+2. Installation und Setup
+3. Grundlegende Verwendung
+4. Konfiguration
+5. Funktionsweise im Detail
+6. Beispiele und Anwendungsfälle
+7. Erweiterte Features
+8. Troubleshooting
+9. Best Practices
+10. FAQ
 
 ---
 
-## 🚀 Installation und Setup
+## 1. Überblick und Zweck
 
-### Systemvoraussetzungen
-- Python 3.6 oder höher
-- PyYAML Bibliothek
-- Betriebssystem: Windows, Linux, macOS
-- Obsidian (optional, aber empfohlen)
+### 1.1 Zielsetzung
+- Automatisches Erstellen/Aktualisieren von YAML‑Frontmatter in `.md`‑Dateien.
+- Strenge Reihenfolge und deterministische Werte über Templates.
+- Skalierbarkeit für große Verzeichnisbäume mit Ausschlüssen und Anker‑Scope.
 
-### Schritt-für-Schritt Installation
+### 1.2 Kernfunktionen
+- Rekursives Durchlaufen eines Wurzelverzeichnisses (`--root`).
+- Laden einer YAML/INI‑Vorlage aus einer von mehreren Konfigurationsdateien.
+- Platzhalter‑System für Pfade, Dateinamen und Datum (%rootN%, %folderN%, %data%, %datum%).
+- Zwei Zusammenführungsmodi: `strict` (Default) und `merge`.
+- Behalten vorhandener Werte via `%wert%`.
+- Leereinträge und Listenelement‑Entfernung über `=leer=`.
+- Selektive Verarbeitung (Anker `base_root`, `scope_under_base_root`).
+- Exklusionsfilter für Ordner (mit Globs, z. B. `.git`, `node_modules`, `.obsidian`).
 
-#### 1. Python prüfen
+### 1.3 Abgrenzung
+- Kein Rename/Move von Dateien (nur Frontmatter‑Manipulation).
+- Kein Dry‑Run; Änderungen werden direkt geschrieben (Backup empfohlen).
+- Fokus auf UTF‑8, Unix‑Zeilenenden (LF); Quoting über YAML.
+
+### 1.4 Typische Einsatzszenarien
+- Einheitliche Projektdokumentation (Projekt/Task/Semester/Kurs‑Metadaten).
+- Studien/Lehr‑Vaults mit hierarchischer Ordnerlogik.
+- Wissensdatenbanken/Wiki‑Bereiche mit stabilem Anker.
+- Zettelkasten mit reproduzierbarem Feldschema/IDs.
+
+### 1.5 Ergebnisqualität
+- Idempotent: erneuter Lauf liefert identisches Frontmatter (bei unveränderten Dateien/Konfigurationen).
+- Reihenfolge der Felder exakt gemäß Vorlage.
+- Unicode‑sicher (YAML mit `allow_unicode: true`).
+
+---
+
+## 2. Installation und Setup
+
+### 2.1 Voraussetzungen
+- Python ≥ 3.8 (empfohlen; funktioniert ab 3.6).
+- Paket: `PyYAML`.
+- Zugriff auf Dateisystem (Lesen/Schreiben in Vault/Repo).
+
+### 2.2 Installation prüfen
 ```bash
 python --version
-# oder
-python3 --version
+python -c "import sys; print(sys.version)"
 ```
 
-#### 2. PyYAML installieren
+### 2.3 Abhängigkeit installieren
 ```bash
 pip install pyyaml
-# oder
-pip3 install pyyaml
+# oder nutzerspezifisch
+pip install --user pyyaml
 ```
 
-#### 3. Dateistruktur einrichten
+### 2.4 Projektstruktur (Beispiel)
 ```
-Ihr-Obsidian-Vault/
-├── ObisDatabase.py       # Das Hauptskript
-├── ObisDatabase.ini      # Die Konfigurationsdatei (oder YAML.ini)
-└── Ihre-Notizen/         # Ihre Markdown-Dateien
-    ├── Semester1/
-    │   ├── BWL01/
-    │   └── STAT02/
-    └── Semester2/
+Vault/
+├─ ObisDatabase.py
+├─ ObisDatabase.ini                 # oder YAML.ini etc. (siehe 4.2)
+├─ SE1/
+│  ├─ BWL01/
+│  │  └─ Notiz1.md
+│  └─ STAT02/
+│     └─ Übung1.md
+└─ SE2/
+   └─ PROG01/
+      └─ Projekt.md
 ```
 
-#### 4. Basis-Konfiguration erstellen
-Erstellen Sie `ObisDatabase.ini` mit minimalem Inhalt:
-```yaml
-# Minimale Testkonfiguration
-Datum: "%datum%"
-Projekt: "Mein Projekt"
-tags:
-  - Test
+### 2.5 Rechte & Encoding
+- Stelle sicher, dass Schreibrechte bestehen.
+- Dateien sind UTF‑8; Editor entsprechend konfigurieren.
+
+### 2.6 Backup (dringend empfohlen)
+```bash
+cp -r Vault Vault-backup-$(date +%Y%m%d)
+# oder mit Git
+git add . && git commit -m "Backup vor ObisDatabase"
 ```
 
 ---
 
-## 💻 Grundlegende Verwendung
+## 3. Grundlegende Verwendung
 
-### Einfachste Ausführung (im aktuellen Verzeichnis)
+### 3.1 Standardlauf (aktuelles Verzeichnis)
 ```bash
 python ObisDatabase.py
 ```
 
-### Mit spezifischem Startverzeichnis
+### 3.2 Mit explizitem Root
 ```bash
-python ObisDatabase.py --root /pfad/zu/ihrem/vault
+python ObisDatabase.py --root /pfad/zu/Vault
 ```
 
-### Typischer Workflow
+### 3.3 Typischer Workflow
+1. Backup anlegen.
+2. Konfiguration erstellen/anpassen (siehe Abschnitt 4).
+3. Testlauf auf kleinem Unterbaum (z. B. `./SE1/BWL01`).
+4. Stichproben prüfen (Frontmatter, Reihenfolge, Werte).
+5. Vollständiger Lauf am Wurzelpfad.
 
-1. **Backup erstellen** (immer!)
-   ```bash
-   cp -r mein-vault mein-vault-backup
-   ```
-
-2. **Konfiguration anpassen**
-   - Öffnen Sie `ObisDatabase.ini`
-   - Definieren Sie Ihre Frontmatter-Struktur
-
-3. **Testlauf in kleinem Bereich**
-   ```bash
-   python ObisDatabase.py --root ./test-ordner
-   ```
-
-4. **Ergebnis prüfen**
-   - Öffnen Sie einige .md Dateien
-   - Kontrollieren Sie das Frontmatter
-
-5. **Vollständige Ausführung**
-   ```bash
-   python ObisDatabase.py --root ./
-   ```
-
-### Ausgabe verstehen
+### 3.4 Konsolen‑Ausgabe interpretieren
 ```
-[OK]   aktualisiert: Semester1/BWL01/Notiz1.md
-[OK]   aktualisiert: Semester1/BWL01/Notiz2.md
-[SKIP] unverändert: Semester1/README.md
+[OK]   aktualisiert: SE1/BWL01/Notiz1.md
+[SKIP] unverändert:  SE1/README.md
 ...
 Fertig. Dateien gesamt: 25, geändert: 18.
 ```
+- `[OK] aktualisiert`: Frontmatter wurde geschrieben/geändert.
+- `[SKIP] unverändert`: Datei hatte bereits identisches Ziel‑Frontmatter.
+- Zusammenfassung: Gesamtanzahl und geänderte Dateien.
+
+### 3.5 Idempotenz
+- Mehrfacher Lauf mit gleicher Vorlage und unveränderten Dateien erzeugt keine weiteren Änderungen.
+
+### 3.6 Grenzen
+- Nur `.md`‑Dateien (rekursiv via `rglob("*.md")`).
+- Frontmatter muss mit `---` beginnen; Abschluss `---` oder `...`.
 
 ---
 
-## ⚙️ Konfigurationsdatei verstehen
+## 4. Konfiguration
 
-### Grundstruktur der ObisDatabase.ini
+### 4.1 Dateiinhalt: Zwei Bereiche
+- **Steuerung (_settings):** Verhalten des Skripts (Modus, Anker, Excludes…).
+- **Vorlage (Top‑Level‑Keys ohne führenden Unterstrich):** Ziel‑Frontmatter in exakter Reihenfolge.
 
+### 4.2 Mögliche Konfigurationsdateien (Erkennungsreihenfolge)
+- `ObisDatabase.ini`
+- `ObisDatabase-Timetable.ini`
+- `ObisDatabase-Klausur.ini`
+- `ObisDatabase-Skript.ini`
+- `YAML.ini`
+> Erste gefundene Datei im `--root` wird verwendet.
+
+### 4.3 Beispiel‑Minimalvorlage
 ```yaml
-# =====================================
-# STEUERUNG (Settings)
-# =====================================
+# Minimal
 _settings:
-  key_mode: strict              # strict oder merge
-  keep_extra_keys: []           # Keys die trotz strict behalten werden
-  base_root: "Wiki"             # Optional: Anker-Ordner
-  scope_under_base_root: true   # Optional: nur unter Anker arbeiten
-  exclude_folders:
-    - .git
-    - node_modules
-    - .obsidian
-    - .archive
-
-# =====================================
-# FRONTMATTER-VORLAGE
-# =====================================
-# Reihenfolge hier = Reihenfolge in .md Dateien!
-
-Datum: "%datum%"               # Erstellungsdatum der Datei
-Projekt: "IUFS"                # Fester Wert
-Task: ""                       # Leerer String
-Semester: "%root0%"            # Name des Start-Roots
-Section: "%root1%"             # Erste Unterebene
-Courses: "%data%"              # Dateiname ohne .md
-
-Prio: "%wert%"                 # Vorhandenen Wert behalten
-Status: "Open"                 # Fester Status
-Status_: 🟠                    # Icon-Status
-
-Text: "text"                   # Fester Text
-
-tags:                          # Listen sind möglich
-  - "IUFS"
-  - "timetable"
-  - "%root1%"                  # Dynamischer Tag
-  - "%data%"                   # Dateiname als Tag
-  
-link: "[[%root1%]]"            # Obsidian-Link
-link1: "[[%data%]]"            # Link zur Datei selbst
-```
-
-### Wichtige Regeln
-
-1. **Unterstriche für Settings**: Alle Keys mit `_` am Anfang sind Einstellungen
-2. **Reihenfolge matters**: Die Reihenfolge in der INI bestimmt die Reihenfolge im Frontmatter
-3. **YAML-Syntax**: Beachten Sie korrekte YAML-Einrückung bei Listen und Maps
-4. **Kommentare**: Mit `#` können Sie Erklärungen hinzufügen
-
----
-
-## 🔤 Das Platzhalter-System
-
-### Übersicht aller Platzhalter
-
-| Platzhalter | Beschreibung | Beispiel bei Pfad `Vault/SE1/BWL01/Klausur/notiz.md` |
-|-------------|--------------|--------------------------------------------------|
-| **Datei-bezogen** | | |
-| `%data%` | Dateiname ohne .md | `notiz` |
-| `%datum%` oder `%date%` | Erstellungsdatum (YYYY-MM-DD) | `2025-08-30` |
-| **Abwärts vom Root** | | |
-| `%root0%` oder `%folder%` | Start-Root Name | `Vault` |
-| `%root1%` | 1. Ordner unter Root | `SE1` |
-| `%root2%` | 2. Ordner unter Root | `BWL01` |
-| `%root3%` | 3. Ordner unter Root | `Klausur` |
-| **Aufwärts von Datei** | | |
-| `%folder0%` | Direkter Elternordner | `Klausur` |
-| `%folder1%` | 1 Ebene über Datei | `BWL01` |
-| `%folder2%` | 2 Ebenen über Datei | `SE1` |
-| `%folder3%` | 3 Ebenen über Datei | `Vault` |
-| **Spezielle Werte** | | |
-| `%wert%` | Vorhandenen Wert behalten | (behält existierenden Wert) |
-| `=leer=` | Leerer String/Element entfernen | `""` oder Element weg |
-
-### Root vs. Folder - Der Unterschied
-
-#### %rootN% - Vom Start abwärts (Stabil)
-```
-Vault/                 ← %root0% (Start-Root)
-└── SE1/               ← %root1%
-    └── BWL01/         ← %root2%
-        └── Klausur/   ← %root3%
-            └── notiz.md
-```
-**Vorteil**: Immer gleiche Bedeutung, egal wo die Datei liegt
-
-#### %folderN% - Von Datei aufwärts (Relativ)
-```
-Vault/                 ← %folder3%
-└── SE1/               ← %folder2%
-    └── BWL01/         ← %folder1%
-        └── Klausur/   ← %folder0% (Elternordner)
-            └── notiz.md
-```
-**Vorteil**: Funktioniert unabhängig von der Gesamtstruktur
-
-### Spezialverhalten
-
-#### %wert% - Intelligente Wertbeibehaltung
-```yaml
-# Vorher in notiz.md:
----
-Prio: hoch
-Status: In Arbeit
----
-
-# ObisDatabase.ini:
-Prio: "%wert%"     # → bleibt "hoch"
-Status: "Open"     # → wird zu "Open"
-Neu: "%wert%"      # → Feld wird NICHT angelegt (da nicht vorhanden)
-```
-
-#### =leer= - Kontext-abhängig
-```yaml
-# In Mappings → Leerer String:
-Task: "=leer="     # → Task: ""
-
-# In Listen → Element entfernen:
+  key_mode: strict
+Datum: "%datum%"
+Projekt: "IUFS"
 tags:
-  - Tag1
-  - "=leer="       # → Dieses Element wird entfernt
-  - Tag2           # → Resultat: nur [Tag1, Tag2]
+  - "Test"
 ```
 
-### Fallback-Mechanismen
+### 4.4 Settings im Detail
+- `key_mode: strict|merge`
+  - `strict`: Nur Template‑Keys werden im Ergebnis geführt (Whitelist via `keep_extra_keys`).
+  - `merge`: Template überschreibt gleichnamige Keys; sonstige vorhandene Keys bleiben und werden angehängt.
+- `keep_extra_keys: [Globs]` (nur in `strict` wirksam)
+  - z. B. `["author", "custom-*", "obsidian_*"]`.
+- `base_root: "<Ordnername>"`
+  - Setzt einen Anker innerhalb des Baums; `%root0%` referenziert dann diesen Ordner.
+- `scope_under_base_root: true|false`
+  - `true`: Verarbeite nur Dateien **unterhalb** des Ankers.
+- `exclude_folders: [Liste|Globs]`
+  - Ordnernamen, die rekursiv ignoriert werden (z. B. `.git`, `.venv`, `node_modules`).
 
-**Zu hohe Indizes:**
-- `%root99%` bei nur 3 Ebenen → fällt zurück auf `%root0%`
-- `%folder99%` bei nur 2 Ebenen → fällt zurück auf `%folder0%`
+### 4.5 Vorlage (Frontmatter‑Schema)
+- Alle **Top‑Level‑Keys ohne `_`** werden in das Frontmatter geschrieben.
+- Reihenfolge in der Datei = Reihenfolge in den `.md`‑Zieldateien.
+- Werte können Literale (Text/Zahl/Bool), Listen oder Maps sein.
+
+### 4.6 Platzhalter
+- `%datum%` / `%date%`: Erstellungsdatum der Datei (YYYY‑MM‑DD; OS‑spezifischer Fallback, siehe 5.6).
+- `%data%`: Dateiname ohne Erweiterung.
+- `%root0%` (`%folder%`): Name des Start‑Roots (oder Anker, wenn gesetzt).
+- `%rootN%` (N≥1): N‑ter Unterordner **vom Root/Anker nach unten**.
+- `%folder0%`: Elternordner der Datei.
+- `%folderN%` (N≥1): N Ebenen **von der Datei nach oben**.
+- `%wert%`: vorhandenen Wert behalten (bei Nichtvorhandensein wird **kein** Feld erzeugt).
+- `=leer=`: Mapping‑Feld → leerer String; in Listen → Element entfernen.
+
+### 4.7 Beispiel „Skript.ini“ (kompakt)
+```yaml
+_settings:
+  key_mode: strict
+  exclude_folders: [".git", "node_modules", ".venv", "__pycache__", ".obsidian", ".archive", "AWorkbook", "Klausur", "Wiki", "settings", "template"]
+Datum: "%datum%"
+Projekt: "IUFS"
+Section: "DLBWPPDBM01-%root1%"
+Task: "%root2%"
+Semester: "SE1"
+Courses: "DLBWPPDBM01"
+Prio: "%wert%"
+Stratus: "%wert%"
+Stratus_: "%wert%"
+Text: "%wert%"
+tags:
+  - "%root1%"
+  - "%data%"
+link1: "[[%data%]]"
+link2: "[[%root0%-%root1%]]"
+```
 
 ---
 
-## 📂 Praktische Beispiele
+## 5. Funktionsweise im Detail
 
-### Beispiel 1: Einfache Studienorganisation
+### 5.1 High‑Level‑Ablauf
+1. Root ermitteln (`--root` oder `cwd`).
+2. Konfiguration laden (erste existierende Datei aus 4.2).
+3. `Settings` parsen; Template ohne `_` extrahieren.
+4. Dateien rekursiv finden (`*.md`), per Excludes filtern.
+5. Pro Datei: Frontmatter splitten → existierende Daten + Body.
+6. Platzhalter auf Template anwenden (Kontext: Pfadebenen, Datum, Dateiname).
+7. Ergebnis mit existierenden Daten zusammenführen (Modus `strict|merge`, Whitelist).
+8. Frontmatter dumpen (`---` + YAML + `---` + Body); bei Änderungen Datei schreiben.
+9. Fortschritt/Zusammenfassung ausgeben.
 
-**Struktur:**
+### 5.2 Frontmatter‑Parsing
+- Erkennung nur, wenn Datei mit `---` beginnt.
+- Ende bei `---` oder `...` auf einer eigenen Zeile.
+- Ungültiges YAML wird defensiv als leeres Dict behandelt.
+
+### 5.3 YAML‑Serialisierung
+- `allow_unicode: true` → UTF‑8 sicher.
+- `sort_keys: false` → Reihenfolge bleibt wie in Vorlage.
+- `default_flow_style: false` → Block‑YAML (lesbar, diff‑freundlich).
+
+### 5.4 Pfadkontext berechnen
+- **Aufwärts:** `compute_folder_levels_up()` erzeugt Liste `[folder0, folder1, ...]` beginnend beim Elternordner der Datei nach oben.
+- **Abwärts:** `compute_root_parts_down(base, md_parent)` liefert Teile von `base` → `md_parent` (`root1`, `root2`, …). `root0 = base.name`.
+- **Anker:** `base_root` bestimmt `base`. Ist `scope_under_base_root: true` und kein Anker im Pfad → Datei wird übersprungen.
+
+### 5.5 Platzhalterersetzung (Details)
+- `%datum%`/`%date%`: einmalige Substitution pro Feld.
+- `%data%`: Dateiname ohne `.md`.
+- `%folder%` und `%root0%`: Alias auf Start‑Root/Anker.
+- `%folderN%` (N≥0): Index zu groß → Fallback auf `%folder0%`.
+- `%rootN%` (N≥0): Index 0 → `%root0%`; Index zu groß oder keine `root_parts_down` → `%root0%`.
+- `=leer=`: in Mappings → `""`; in Listen → Element entfällt.
+- `%wert%`:
+  - In Mappings: existierender Wert bleibt, andernfalls *kein* Feld.
+  - In Listen: mehrdeutig → Element wird **nicht** geschrieben (übersprungen).
+
+### 5.6 Datumsquelle (OS‑spezifisch)
+- Bevorzugt: `st_birthtime` (macOS/Windows) → Erstellungsdatum.
+- Fallback: `st_mtime` (Linux) → letzter Änderungszeitpunkt des Inhalts.
+- Ausgabeformat: ISO‑Datum (`YYYY‑MM‑DD`).
+
+### 5.7 Merge‑Strategie
+- `strict`:
+  - Resultat enthält **nur** Template‑Keys.
+  - Zusätzliche existierende Keys bleiben **nur**, wenn `keep_extra_keys` passt.
+- `merge`:
+  - Template‑Keys überschreiben gleichnamige.
+  - Alle übrigen existierenden Keys werden unten angehängt (Originalreihenfolge).
+
+### 5.8 Exklusionslogik
+- Jeder Elternordnername wird gegen die Muster in `exclude_folders` geprüft (fnmatch/Globs).
+- Treffer → Datei wird nicht verarbeitet.
+
+### 5.9 I/O und Newlines
+- Lesen/Schreiben mit UTF‑8, `newline="\n"`.
+- Body bleibt unangetastet (nur Frontmatter wird ersetzt/gesetzt).
+
+### 5.10 CLI und Exit‑Verhalten
+- `--root PATH` optional (Standard: `cwd`).
+- Kein Dry‑Run; bei fehlender Konfigurationsdatei: Exit mit Fehler.
+- YAML‑Parsingfehler in Konfiguration → Fehlerausgabe; Skript beendet sich.
+
+---
+
+## 6. Beispiele und Anwendungsfälle
+
+### 6.1 Studienorganisation (SE/Kurs/Typ)
+**Struktur**
 ```
 Studium/
-├── ObisDatabase.ini
-├── SE1/
-│   ├── BWL01/
-│   │   └── Zusammenfassung.md
-│   └── STAT02/
-│       └── Übungen.md
-└── SE2/
-    └── PROG01/
-        └── Projekt.md
+├─ ObisDatabase.ini
+├─ SE1/
+│  ├─ BWL01/
+│  │  └─ Zusammenfassung.md
+│  └─ STAT02/
+│     └─ Übung.md
+└─ SE2/
+   └─ PROG01/
+      └─ Projekt.md
 ```
-
-**ObisDatabase.ini:**
+**Vorlage**
 ```yaml
 Datum: "%datum%"
 Semester: "%root1%"
@@ -312,11 +325,10 @@ tags:
   - "%root2%"
 link: "[[%root2%-Index]]"
 ```
-
-**Ergebnis in SE1/BWL01/Zusammenfassung.md:**
+**Ergebnis (SE1/BWL01/Zusammenfassung.md)**
 ```yaml
 ---
-Datum: '2025-08-30'
+Datum: '2025-09-08'
 Semester: SE1
 Kurs: BWL01
 Typ: Zusammenfassung
@@ -327,51 +339,45 @@ link: "[[BWL01-Index]]"
 ---
 ```
 
-### Beispiel 2: Projektmanagement mit Status
-
-**ObisDatabase.ini:**
+### 6.2 Projekt‑Backlog mit Status/Prio
+**Vorlage**
 ```yaml
 _settings:
   key_mode: strict
   keep_extra_keys: ["custom-*"]
-
 Projekt: "%root1%"
 Task: "%data%"
-Status: "%wert%"          # Behält vorhandenen Status
-Prio: "mittel"            # Default-Priorität
+Status: "%wert%"
+Prio: "mittel"
 Erstellt: "%datum%"
 Tags:
   - "projekt-%root1%"
   - "%folder0%"
-Verantwortlich: "=leer="  # Leeres Feld für spätere Zuweisung
+Verantwortlich: "=leer="
 ```
 
-### Beispiel 3: Komplexe Wissensstruktur mit Anker
-
-**Struktur:**
+### 6.3 Wiki mit Anker (stabile Pfadreferenzen)
+**Struktur**
 ```
-Obsidian-Vault/
-├── Privat/
-├── Wiki/              ← Anker-Punkt
-│   ├── Technik/
-│   │   ├── Python/
-│   │   │   └── Basics.md
-│   │   └── JavaScript/
-│   └── Management/
-└── Archiv/
+Vault/
+├─ Wiki/               ← Anker
+│  ├─ Technik/
+│  │  ├─ Python/
+│  │  │  └─ Basics.md
+│  │  └─ JS/
+│  └─ Management/
+└─ Privat/
 ```
-
-**ObisDatabase.ini:**
+**Vorlage**
 ```yaml
 _settings:
-  base_root: "Wiki"           # Anker setzen
-  scope_under_base_root: true # Nur Wiki-Bereich bearbeiten
-
-Bereich: "%root1%"            # "Technik" oder "Management"
-Thema: "%root2%"              # "Python", "JavaScript", etc.
+  base_root: "Wiki"
+  scope_under_base_root: true
+Bereich: "%root1%"
+Thema: "%root2%"
 Artikel: "%data%"
 Pfad: "%root1%/%root2%/%data%"
-Tags:
+tags:
   - "wiki"
   - "%root1%"
   - "%root2%"
@@ -379,273 +385,136 @@ Backlink: "[[Wiki-Index]]"
 Status: "published"
 ```
 
-### Beispiel 4: Aufgabenverwaltung mit Icons
-
+### 6.4 Zettelkasten/Notizen (ID‑Schema)
 ```yaml
-# Für Aufgaben-Tracking
+id: "%datum%-%data%"
+title: "%data%"
+tags: ["zettel", "%root1%"]
+status: "permanent"
+references: []
+backlinks: []
+```
+
+### 6.5 Aufgaben mit Icon‑Status
+```yaml
 Datum: "%datum%"
 Projekt: "IUFS"
 Task: "%data%"
-Priorität: "%wert%"
-
-# Status mit Icons
 Status_Text: "%wert%"
 Status_Icon: "%wert%"
-
-# Automatische Kategorisierung
 Kategorie: "%folder1%"
 Unterkategorie: "%folder0%"
-
-# Verknüpfungen
-tags:
-  - "task"
-  - "%folder1%"
-  - "%folder0%"
+tags: ["task", "%folder1%", "%folder0%"]
 links:
   parent: "[[%folder1%-Übersicht]]"
-  index: "[[Task-Index]]"
+  index:  "[[Task-Index]]"
 ```
 
----
-
-## ⚙️ Settings und Modi
-
-### key_mode: strict vs. merge
-
-#### strict Mode (Default)
+### 6.6 Attribute (feste Reihenfolge, UI‑geeignet)
 ```yaml
-_settings:
-  key_mode: strict
-```
-- ✅ **NUR** in INI definierte Keys bleiben
-- ❌ Alle anderen Keys werden **entfernt**
-- ✅ Ausnahme: Keys in `keep_extra_keys`
-- **Verwendung**: Wenn Sie vollständige Kontrolle wollen
-
-**Beispiel strict:**
-```yaml
-# Vorher in .md:
----
-Datum: 2024-01-01
-Autor: Max          # ← wird entfernt!
-Titel: Test
----
-
-# Nach strict (nur Datum in INI):
----
-Datum: 2025-08-30
----
-```
-
-#### merge Mode
-```yaml
-_settings:
-  key_mode: merge
-```
-- ✅ INI-Keys überschreiben gleichnamige
-- ✅ Andere vorhandene Keys **bleiben erhalten**
-- ✅ Neue Keys werden hinzugefügt
-- **Verwendung**: Wenn Sie bestehende Daten ergänzen wollen
-
-**Beispiel merge:**
-```yaml
-# Vorher in .md:
----
-Datum: 2024-01-01
-Autor: Max          # ← bleibt erhalten!
----
-
-# Nach merge (Datum in INI):
----
-Datum: 2025-08-30
-Autor: Max          # ← noch da!
----
-```
-
-### keep_extra_keys - Whitelist für strict
-
-```yaml
-_settings:
-  key_mode: strict
-  keep_extra_keys:
-    - "author"           # Exakter Key
-    - "custom-*"         # Wildcard: custom-1, custom-abc, etc.
-    - "obsidian_*"       # Alle Obsidian-spezifischen
-    - "priority"         # Noch ein exakter Key
-```
-
-### exclude_folders - Ordner überspringen
-
-```yaml
-_settings:
-  exclude_folders:
-    - .git               # Versionskontrolle
-    - .obsidian          # Obsidian-Konfiguration
-    - node_modules       # Node.js Pakete
-    - .archive           # Archivierte Inhalte
-    - "*-backup"         # Alle Backup-Ordner
-    - "temp*"            # Temporäre Ordner
-```
-
-### base_root & scope_under_base_root
-
-```yaml
-_settings:
-  base_root: "Wiki"              # Neue Root-Referenz
-  scope_under_base_root: true    # NUR Wiki bearbeiten
-```
-
-**Effekt:**
-- `%root0%` bezieht sich jetzt auf "Wiki" (nicht mehr Vault-Root)
-- `%root1%` ist der erste Ordner unter Wiki
-- Mit `scope_under_base_root: true` werden NUR Dateien unter Wiki bearbeitet
-
----
-
-## 🎨 Fortgeschrittene Techniken
-
-### 1. Bedingte Werte mit %wert%
-
-```yaml
-# Smart Defaults - nur setzen wenn nicht vorhanden
-Status: "%wert%"
-Priorität: "%wert%"
-
-# Erzwingt Update bei jedem Lauf
-Zuletzt_Aktualisiert: "%datum%"
-
-# Hybrid - Default nur wenn leer
-Autor: "%wert%"
-```
-
-### 2. Dynamische Tag-Systeme
-
-```yaml
-tags:
-  # Hierarchische Tags
-  - "%root1%"
-  - "%root1%/%root2%"
-  - "%root1%/%root2%/%folder0%"
-  
-  # Typ-basierte Tags
-  - "typ-%data%"
-  
-  # Konditionale Tags
-  - "%wert%"  # Behält existierende Custom-Tags
-```
-
-### 3. Automatische Verlinkung
-
-```yaml
-# Breadcrumb-Navigation
-navigation:
-  up: "[[%folder1%-Index]]"
-  current: "[[%folder0%-Übersicht]]"
-  root: "[[%root0%-Home]]"
-
-# MOC (Map of Content) Links
-moc_links:
-  - "[[%root1%-MOC]]"
-  - "[[%root2%-MOC]]"
-```
-
-### 4. Metadaten-Templates nach Dateityp
-
-**Unterschiedliche INIs für verschiedene Bereiche:**
-
-```bash
-# Struktur
-Vault/
-├── Projekte/
-│   ├── ObisDatabase.ini  # Projekt-spezifisch
-│   └── ...
-├── Wiki/
-│   ├── YAML.ini          # Wiki-spezifisch
-│   └── ...
-└── Journal/
-    ├── ObisDatabase.ini  # Journal-spezifisch
-    └── ...
-
-# Ausführung pro Bereich
-python ObisDatabase.py --root ./Projekte
-python ObisDatabase.py --root ./Wiki
-python ObisDatabase.py --root ./Journal
-```
-
-### 5. Datum-basierte Organisation
-
-```yaml
-# Für Journal/Tagebuch
 Datum: "%datum%"
-Jahr: "%datum%"           # Wird zu YYYY-MM-DD (nachbearbeiten nötig)
-Wochentag: "%wert%"       # Manuell ergänzen
-Kalenderwoche: "%wert%"
-Tags:
-  - "journal"
-  - "jahr-%datum%"       # jahr-2025-08-30 (nachbearbeiten)
-```
-
-### 6. Kombination mit ObisRenamer
-
-**Workflow:**
-1. Erst ObisRenamer für Dateiumbenennung
-2. Dann ObisDatabase für Frontmatter
-
-```bash
-# Schritt 1: Dateien umbenennen
-python ObisRenamer.py --root ./Studium
-
-# Schritt 2: Frontmatter aktualisieren
-python ObisDatabase.py --root ./Studium
+Projekt: "IUFS"
+Section: "%root1%-%root2%"
+Task: "%data%"
+Semester: "%root1%"
+Courses: "%root2%"
+Prio: "%wert%"
+Stratus: "%wert%"
+Stratus_: "%wert%"
+Text: "%wert%"
 ```
 
 ---
 
-## ⚠️ Troubleshooting
+## 7. Erweiterte Features
 
-### Häufige Probleme und Lösungen
+### 7.1 Anker‑Logik (`base_root`)
+- Suche vom Dateipfad **aufwärts** nach einem Ordner mit genau diesem Namen.
+- Wird gefunden, dient er als `base` → `%root0% = anchor.name`.
+- `scope_under_base_root: true` → Nur Dateien **unter** dem Anker werden verarbeitet; alle anderen werden übersprungen.
 
-#### Problem 1: "PyYAML nicht installiert"
+### 7.2 Platzhalter‑Fallbacks
+- `%rootN%` außerhalb der Tiefe → `%root0%`.
+- `%folderN%` außerhalb der Tiefe → `%folder0%`.
+
+### 7.3 `%wert%` – Regeln
+- In Mappings: behält vorhandenen Wert; wenn nicht vorhanden → Feld **nicht** erzeugen.
+- In Listen: uneindeutig → Element wird ignoriert (kein Eintrag).
+
+### 7.4 `=leer=` – Kontextabhängigkeit
+- In Mappings → `""` (leerer String).
+- In Listen → Element entfällt (nützlich für Platzhalter in Template‑Listen).
+
+### 7.5 Excludes (fnmatch)
+- Muster matchen gegen **irgendeinen** Ordnernamen im Pfad (Elternkette).
+- Verwende Globs: `temp*`, `*-backup`, etc.
+
+### 7.6 YAML‑Dump‑Eigenschaften
+- Reproduzierbare Reihenfolge, Blockstil, Unicode‑sicher.
+- Gut diff‑bar in Git.
+
+### 7.7 Performancehinweise
+- I/O‑gebunden; Hauptkosten: Lesen/Schreiben + YAML‑(De)Serialisierung.
+- Reduziere Suchraum via `exclude_folders` und/oder Anker‑Scope.
+- Segmentiere große Vaults in Teilaufrufe (`--root` auf Unterpfade).
+
+### 7.8 Integrationen/Kompatibilität
+- Obsidian Dataview: einfache, flache Schlüssel bevorzugen; ISO‑Daten für Filter/SORT.
+- Obsidian Links: `[[...]]` in Strings einsetzbar; Platzhalter innerhalb der Linktexte erlaubt.
+
+### 7.9 Windows/macOS/Linux
+- Pfade via `pathlib`; Zeilenenden `\n` → konsistent über Plattformen.
+- Datum: `birthtime` (wo verfügbar), sonst `mtime`.
+
+---
+
+## 8. Troubleshooting
+
+### 8.1 „PyYAML nicht installiert“
+**Symptom**
 ```
-[FEHLER] PyYAML nicht installiert
+[FEHLER] PyYAML nicht installiert. Bitte ausführen: pip install pyyaml
 ```
-**Lösung:**
+**Lösung**
 ```bash
 pip install pyyaml
-# oder bei Rechteproblemen:
+# bei Policy‑Einschränkungen
 pip install --user pyyaml
 ```
 
-#### Problem 2: "Keine Konfigurationsdatei gefunden"
+### 8.2 „Keine Konfigurationsdatei gefunden“
+**Symptom**
 ```
-[FEHLER] Keine Konfigurationsdatei gefunden (ObisDatabase.ini oder YAML.ini)
+[FEHLER] Keine Konfigurationsdatei gefunden (ObisDatabase.ini oder ... YAML.ini) in <root>
 ```
-**Lösung:**
-- Datei im richtigen Verzeichnis erstellen
-- Oder mit --root den richtigen Pfad angeben
+**Prüfen**
+- Liegt eine der Dateien aus 4.2 im Root?
+- Stimmt `--root`?
 
-#### Problem 3: Frontmatter wird nicht erkannt
-**Symptome:** Dateien werden als "unverändert" übersprungen
-
-**Mögliche Ursachen:**
-1. Kein gültiges YAML-Frontmatter vorhanden
-2. Frontmatter nicht mit `---` umschlossen
-3. Syntaxfehler im bestehenden Frontmatter
-
-**Lösung:**
-```markdown
+### 8.3 Frontmatter wird nicht erkannt
+**Ursachen**
+- Datei beginnt nicht mit `---`.
+- Abschlusszeile (`---` oder `...`) fehlt.
+- Vorangehende Leerzeichen/Zeilen vor `---`.
+**Fix**
+```md
 ---
-# Korrektes Format
 key: value
 ---
-
-Inhalt der Datei...
+Inhalt…
 ```
 
-#### Problem 4: Unerwartete Werte in Platzhaltern
-**Debug-Strategie:**
+### 8.4 YAML‑Syntaxfehler in Konfiguration
+**Symptom**
+- Parser‑Fehler; Programm beendet sich.
+**Fix**
+- Einrückungen prüfen (2 Leerzeichen, keine Tabs in YAML).
+- Strings ggf. quoten.
+
+### 8.5 Unerwartete Platzhalterwerte
+**Vorgehen**
+- Debug‑Keys temporär ins Template aufnehmen:
 ```yaml
-# Test-INI zum Debugging
 Debug_Root0: "%root0%"
 Debug_Root1: "%root1%"
 Debug_Folder0: "%folder0%"
@@ -653,216 +522,179 @@ Debug_Folder1: "%folder1%"
 Debug_Data: "%data%"
 ```
 
-#### Problem 5: Encoding-Probleme (Umlaute)
-**Symptome:** Umlaute werden falsch dargestellt
+### 8.6 Encoding/Diakritika
+- Sicherstellen: Editor/Repo auf UTF‑8.
+- Windows‑Shell ggf. auf UTF‑8 stellen (`chcp 65001`).
 
-**Lösung:**
-- Sicherstellen dass alle Dateien UTF-8 kodiert sind
-- Editor auf UTF-8 einstellen
-- Python mit UTF-8 ausführen
+### 8.7 Massive Rewrites unerwartet
+- Prüfe `key_mode`. `strict` entfernt alle nicht im Template gelisteten Keys (außer Whitelist).
+- Prüfe Whitelist‑Muster.
 
-### Performance-Probleme
+### 8.8 Performance
+- Excludes ergänzen.
+- Scope einschränken (`base_root` + `scope_under_base_root`).
+- Große Bäume in Teilbereichen ausführen.
 
-**Bei vielen Dateien (>1000):**
+### 8.9 Datumsdifferenzen zwischen OS
+- macOS/Windows: Erstellungsdatum.
+- Linux: Änderungsdatum (Inhalt) – kann bei Kopieren variieren.
 
-1. **Exclude-Folders nutzen:**
-```yaml
-_settings:
-  exclude_folders:
-    - .git
-    - node_modules
-    - archive
-    - backup
-```
-
-2. **Bereichsweise arbeiten:**
-```bash
-# Statt ganzer Vault:
-python ObisDatabase.py --root ./Vault/Bereich1
-python ObisDatabase.py --root ./Vault/Bereich2
-```
-
-3. **Scope einschränken:**
-```yaml
-_settings:
-  base_root: "Arbeitsbereich"
-  scope_under_base_root: true
-```
+### 8.10 Bekannte Limitierungen
+- Kein Dry‑Run/`--check`.
+- Keine parallele Verarbeitung (bewusst I/O‑einfach gehalten).
 
 ---
 
-## 📚 Best Practices
+## 9. Best Practices
 
-### 1. Sicherheit
+### 9.1 Sicherheit & Nachvollziehbarkeit
+- Vor jedem Lauf: Backup oder Git‑Commit.
+- Nach jedem Lauf: diff prüfen (z. B. `git diff`).
 
-#### Immer Backup!
-```bash
-# Vor jeder Ausführung:
-cp -r mein-vault mein-vault-$(date +%Y%m%d)
+### 9.2 Template‑Design
+- Flache, sprechende Schlüssel (Dataview‑freundlich).
+- ISO‑Daten, numerische Prioritäten, Bool‑Flags für Filter.
+- Reihenfolge logisch gruppieren (Metadaten → Klassifikation → Links/Tags).
 
-# Oder mit Git:
-git add . && git commit -m "Vor ObisDatabase"
-```
+### 9.3 Platzhalter klar nutzen
+- `%rootN%` für **stabile** Hierarchiereferenzen (vom Anker/Root nach unten).
+- `%folderN%` für **relative** Bezüge (von der Datei nach oben).
+- `%wert%` nur dort, wo bestehende Inhalte beibehalten werden sollen.
+- `=leer=` gezielt einsetzen (leere Felder oder Listenbereinigung).
 
-#### Schrittweise vorgehen
-1. Klein anfangen (ein Testordner)
-2. Konfiguration prüfen
-3. Erweitern
-4. Vollständig ausführen
-
-### 2. Organisations-Strategien
-
-#### Konsistente Ordnerstruktur
+### 9.4 Strukturdisziplin
 ```
 Vault/
-├── 01-Projekte/
-│   ├── Projekt-A/
-│   └── Projekt-B/
-├── 02-Wissen/
-│   ├── Technik/
-│   └── Management/
-└── 03-Archiv/
+├─ 01-Projekte/
+├─ 02-Wissen/
+└─ 03-Archiv/
 ```
+- Tiefe und Benennung standardisieren → weniger Sonderfälle.
 
-#### Sinnvolle Platzhalter-Verwendung
-```yaml
-# GUT - Klar und wartbar:
-Bereich: "%root1%"
-Thema: "%root2%"
-Dokument: "%data%"
+### 9.5 Whitelist konservativ
+- `keep_extra_keys` minimal halten; vermeidet „schleichende“ Schemazuwächse.
 
-# SCHLECHT - Verwirrend:
-x: "%folder3%"
-y: "%root2%"
-z: "%folder1%"
-```
+### 9.6 Versionskennzeichen
+- `schema_version` im Frontmatter pflegen (manuelle Erhöhung bei Template‑Änderungen).
 
-### 3. Obsidian-Integration
+### 9.7 Einsatz mit anderen Tools
+- Erst Umbenennen/Strukturieren (z. B. Renamer), dann Frontmatter setzen.
 
-#### Dataview-kompatible Felder
-```yaml
-# Für Dataview-Queries optimiert
-status: "active"          # Einfache Werte für WHERE
-priority: 3                # Zahlen für Sortierung
-due_date: "2025-09-01"    # ISO-Daten für Zeitvergleiche
-tags:                      # Arrays für Contains-Queries
-  - projekt
-  - wichtig
-```
+### 9.8 Testgetriebene Einführung
+- Pilot‑Ordner wählen, Template iterieren, dann Vault‑weit ausrollen.
 
-#### Template-Kompatibilität
-```yaml
-# Felder die Obsidian-Templates nutzen können
-template: "%wert%"         # Template-Name beibehalten
-created: "%datum%"         # Erstellungsdatum
-modified: "%wert%"         # Für manuelles Update
-```
+### 9.9 Dokumentation der Vorlage
+- Kommentare im Template erklären jeden Key und dessen Herkunft.
 
-### 4. Wartbarkeit
-
-#### Dokumentierte Konfiguration
-```yaml
-# ObisDatabase.ini mit Kommentaren
-
-# === METADATEN ===
-# Automatisch gesetzt bei jeder Ausführung
-Datum: "%datum%"           # Erstellungsdatum der Datei
-Vault: "%root0%"           # Vault-Name für Multi-Vault-Setup
-
-# === KLASSIFIKATION ===
-# Basierend auf Ordnerstruktur
-Bereich: "%root1%"         # Hauptbereich (Projekte/Wissen/etc)
-Kategorie: "%root2%"       # Unterkategorie
-```
-
-#### Versionierung
-```yaml
-# Versions-Tracking
-schema_version: "2.0"      # Bei Änderungen erhöhen
-last_updated: "%datum%"    # Wann zuletzt verarbeitet
-```
-
-### 5. Häufige Muster
-
-#### Für Zettelkasten
-```yaml
-id: "%datum%-%data%"
-title: "%data%"
-tags:
-  - "zettel"
-  - "%root1%"
-references: []
-backlinks: []
-status: "permanent"
-```
-
-#### Für Projektmanagement
-```yaml
-projekt: "%root1%"
-phase: "%folder0%"
-task: "%data%"
-status: "open"
-priority: 2
-assigned: ""
-deadline: ""
-```
-
-#### Für Wissensdatenbank
-```yaml
-domain: "%root1%"
-topic: "%root2%"
-subtopic: "%folder0%"
-article: "%data%"
-tags:
-  - "wiki"
-  - "%root1%"
-  - "%root2%"
-verified: false
-last_review: "%datum%"
-```
+### 9.10 Review‑Zyklen
+- Regelmäßig `last_updated: %datum%` setzen (wenn gewünscht), um Review‑Listen zu erzeugen.
 
 ---
 
-## 🎯 Zusammenfassung
+## 10. FAQ
 
-### Die wichtigsten Befehle
+### F1: Welche Konfigurationsdatei wird genutzt?
+- Die erste vorhandene in der Reihenfolge: `ObisDatabase.ini`, `ObisDatabase-Timetable.ini`, `ObisDatabase-Klausur.ini`, `ObisDatabase-Skript.ini`, `YAML.ini`.
 
-```bash
-# Grundausführung
-python ObisDatabase.py
+### F2: Was macht `key_mode: strict` vs. `merge`?
+- `strict`: Ergebnis enthält exakt die Template‑Keys; andere werden entfernt (außer Whitelist).
+- `merge`: Template überschreibt Gleichnamige; alle anderen vorhandenen Keys bleiben erhalten.
 
-# Mit spezifischem Root
-python ObisDatabase.py --root /pfad/zum/vault
+### F3: Wie setze ich einen stabilen Referenzpunkt im Baum?
+- Mit `base_root: "Wiki"`. Dann ist `%root0% = "Wiki"`; `%root1%` ist der erste Unterordner darunter.
 
-# Test in Unterordner
-python ObisDatabase.py --root ./test
-```
+### F4: Nur einen Bereich verarbeiten?
+- `scope_under_base_root: true` zusammen mit `base_root` aktivieren.
 
-### Die wichtigsten Platzhalter
+### F5: Wofür sind `%rootN%` und `%folderN%`?
+- `%rootN%`: vom Start‑Root/Anker **abwärts** (stabil je Struktur).
+- `%folderN%`: von der Datei **aufwärts** (relativ zur Dateitiefe).
 
-| Platzhalter | Verwendung |
-|-------------|------------|
-| `%datum%` | Erstellungsdatum |
-| `%data%` | Dateiname |
-| `%root1%`, `%root2%` | Ordner von oben |
-| `%folder0%`, `%folder1%` | Ordner von unten |
-| `%wert%` | Wert beibehalten |
+### F6: Was passiert bei zu großem Index?
+- `%rootN%` → Fallback `%root0%`; `%folderN%` → Fallback `%folder0%`.
 
-### Die wichtigsten Settings
+### F7: Wie behalte ich existierende Werte?
+- `%wert%` in Mappings nutzt vorhandene Werte; existiert der Key nicht, wird er nicht angelegt.
 
+### F8: Warum wirkt `%wert%` nicht in Listen?
+- In Listen ist die Bedeutung uneindeutig → Eintrag wird übersprungen.
+
+### F9: Wie entferne ich Listenelemente?
+- Trage `=leer=` an Stelle des Elements ein → Element entfällt im Ergebnisliste.
+
+### F10: Wie erzeuge ich leere Felder?
+- In Mappings `=leer=` → leerer String `""`.
+
+### F11: Wie verhindere ich Bearbeitung bestimmter Ordner?
+- `exclude_folders` mit Namen oder Globs befüllen (z. B. `.git`, `.obsidian`, `*-backup`).
+
+### F12: Werden Nicht‑Markdowns verarbeitet?
+- Nein, nur Dateien mit Endung `.md`.
+
+### F13: Welche Newlines/Encoding?
+- UTF‑8, `\n` (Unix‑Zeilenende).
+
+### F14: Woher kommt das Datum?
+- OS‑abhängig: `birthtime` (macOS/Windows), sonst `mtime` (Linux). Format `YYYY‑MM‑DD`.
+
+### F15: Entfernt `strict` wirklich alle unbekannten Keys?
+- Ja, außer sie matchen `keep_extra_keys` (Whitelist).
+
+### F16: Kann ich mehrere Vorlagen pro Vault nutzen?
+- Ja, pro Unterbereich eigene Datei; starte das Skript mehrfach mit unterschiedlichen `--root` Pfaden oder lege pro Bereich eine passende Konfigurationsdatei und starte im jeweiligen Bereich.
+
+### F17: Gilt die Reihenfolge der Keys?
+- Ja. Die Reihenfolge im Template bestimmt die Reihenfolge im Frontmatter.
+
+### F18: Greift das Tool Obsidian‑spezifische Felder an?
+- Nur, wenn sie im Template stehen oder `strict` ohne Whitelist läuft. Sonst bleiben sie unberührt (in `merge`) oder via Whitelist (in `strict`).
+
+### F19: Kann ich Links mit Platzhaltern bauen?
+- Ja, z. B. `"[[%root2%-Index]]"` oder `"[[%data%]]"`.
+
+### F20: Wie teste ich sicher?
+- Kopie eines Unterordners anlegen, Template daran testen, diffs prüfen, dann Vault‑weit ausrollen.
+
+---
+
+### Anhang A – Schnellreferenz Platzhalter
+- `%datum%`, `%date%` → Erstellungsdatum.
+- `%data%` → Dateiname ohne `.md`.
+- `%root0%` / `%folder%` → Start‑Root/Ankername.
+- `%root1%`, `%root2%`, … → Pfadteile ab Root/Anker **nach unten**.
+- `%folder0%`, `%folder1%`, … → Pfadteile **nach oben** von der Datei aus.
+- `%wert%` → vorhandenen Wert behalten (nur Mappings).
+- `=leer=` → Mapping: leerer String; Liste: Element entfällt.
+
+### Anhang B – Template‑Skeleton (leer)
 ```yaml
 _settings:
-  key_mode: strict        # oder merge
-  keep_extra_keys: []     # Whitelist für strict
-  exclude_folders: []     # Ausschlüsse
+  key_mode: strict
+  keep_extra_keys: []
+  exclude_folders: [".git", ".obsidian", "node_modules", ".venv", "__pycache__"]
+# --- Frontmatter‑Vorlage ---
+Datum: "%datum%"
+Projekt: ""
+Section: ""
+Task: ""
+Semester: ""
+Courses: ""
+Prio: "%wert%"
+Stratus: "%wert%"
+Stratus_: "%wert%"
+Text: "%wert%"
+tags: []
+link1: ""
+link2: ""
 ```
 
-### Goldene Regeln
+### Anhang C – Debug‑Vorlage
+```yaml
+Debug_Root0: "%root0%"
+Debug_Root1: "%root1%"
+Debug_Root2: "%root2%"
+Debug_Folder0: "%folder0%"
+Debug_Folder1: "%folder1%"
+Debug_Data: "%data%"
+```
 
-1. **Immer Backup machen** vor der Ausführung
-2. **Klein anfangen**, dann erweitern
-3. **Dokumentieren** Sie Ihre Konfiguration
-4. **Testen** Sie in einem Unterordner
-5. **Konsistent bleiben** bei der Struktur
-
-Mit ObisDatabase haben Sie ein mächtiges Werkzeug zur Hand, um Ihre Markdown-Dateien systematisch und konsistent zu verwalten. Die Kombination aus flexiblen Platzhaltern und strikter Konfiguration ermöglicht es, auch große Dokumentensammlungen effizient zu organisieren!
