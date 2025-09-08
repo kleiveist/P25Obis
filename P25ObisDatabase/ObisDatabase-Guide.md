@@ -1,16 +1,3 @@
----
-Datum: '2025-09-08'
-Projekt: IUFS
-Section: IDBS01-P25ObisDatabase
-Task: P25ObisDatabase
-Semester: SE1
-Courses: IDBS01
-Tags:
-- ObisDatabase
-- Guide
-- Überarbeitet
----
-
 # ObisDatabase – Technischer Leitfaden (Überarbeitet)
 
 > YAML‑Frontmatter‑Manager für Markdown/Obsidian. Fokus: konsistente Metadaten, deterministische Ausgabe, skalierbar für große Vaults/Repos.
@@ -18,17 +5,16 @@ Tags:
 ---
 
 ## Inhaltsverzeichnis
-
-1. Überblick und Zweck
-2. Installation und Setup
-3. Grundlegende Verwendung
-4. Konfiguration
-5. Funktionsweise im Detail
-6. Beispiele und Anwendungsfälle
-7. Erweiterte Features
-8. Troubleshooting
-9. Best Practices
-10. FAQ
+1. [Überblick und Zweck](#überblick-und-zweck)
+2. [Installation und Setup](#installation-und-setup)
+3. [Grundlegende Verwendung](#grundlegende-verwendung)
+4. [Konfiguration](#konfiguration)
+5. [Funktionsweise im Detail](#funktionsweise-im-detail)
+6. [Beispiele und Anwendungsfälle](#beispiele-und-anwendungsfälle)
+7. [Erweiterte Features](#erweiterte-features)
+8. [Troubleshooting](#troubleshooting)
+9. [Best Practices](#best-practices)
+10. [FAQ](#faq)
 
 ---
 
