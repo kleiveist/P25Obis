@@ -42,7 +42,7 @@ except Exception:  # pragma: no cover
     sys.stderr.write("[FEHLER] PyYAML nicht installiert. Bitte ausführen: pip install pyyaml\n")
     raise
 
-# ------------------------ Konstanten ------------------------
+# ======================= Konstanten =======================
 CONFIG_FILENAMES = ("ObisDatabase.ini", "ObisDatabase-Timetable.ini", "ObisDatabase-Klausur.ini", "ObisDatabase-Skript.ini", "YAML.ini")
 FRONTMATTER_DELIM = "---"
 SENTINEL_EMPTY = "=leer="
@@ -55,7 +55,7 @@ class _KEEP:  # Marker für %wert%
 
 KEEP_EXISTING = _KEEP()
 
-# ------------------------ Hilfsfunktionen ------------------------
+# ======================= Hilfsfunktionen =======================
 
 def get_creation_date(p: Path) -> str:
     """YYYY-MM-DD; bevorzugt st_birthtime (macOS/Windows), sonst st_mtime (Linux)."""
@@ -74,7 +74,7 @@ def read_text(p: Path) -> str:
 def write_text(p: Path, content: str) -> None:
     p.write_text(content, encoding="utf-8", newline="\n")
 
-# ------------------------ Settings ------------------------
+# ======================= Settings =======================
 
 @dataclass
 class Settings:
@@ -89,6 +89,9 @@ class Settings:
     keep_extra_keys: Tuple[str, ...] = ()
     base_root: str | None = None         # Anker-Ordnername unterhalb --root
     scope_under_base_root: bool = False  # nur Dateien unterhalb des Ankers verarbeiten
+    # NEU: selektive Verarbeitung nach Ordnernamen (abschaltbar)
+    include_folders_by_name: Tuple[str, ...] = ()
+    selective_processing_active: bool = False
 
     @staticmethod
     def from_cfg(cfg: Dict[str, Any]) -> "Settings":
@@ -100,15 +103,19 @@ class Settings:
         keep_extra = tuple(s.get("keep_extra_keys", []) or [])
         base_root = s.get("base_root")
         scope_under = bool(s.get("scope_under_base_root", False))
+        include_only = tuple(s.get("include_folders_by_name", []) or [])
+        selective_on = bool(s.get("selective_processing_active", False))
         return Settings(
             exclude_folders=excl,
             key_mode=key_mode,
             keep_extra_keys=keep_extra,
             base_root=base_root,
             scope_under_base_root=scope_under,
+            include_folders_by_name=include_only,
+            selective_processing_active=selective_on,
         )
 
-# ------------------------ YAML-INI Laden ------------------------
+# ======================= YAML-INI Laden =======================
 
 def load_config(root: Path) -> Tuple[Settings, Dict[str, Any]]:
     ini_path: Path | None = None
@@ -122,10 +129,15 @@ def load_config(root: Path) -> Tuple[Settings, Dict[str, Any]]:
         sys.stderr.write(f"[FEHLER] Keine Konfigurationsdatei gefunden ({opts}) in {root}\n")
         sys.exit(2)
 
+    # Vorab: YAML verbietet Tabs -> klare Fehlermeldung statt kryptischem ScannerError
+    raw_ini = ini_path.read_text(encoding="utf-8")
+    if "\t" in raw_ini:
+        sys.stderr.write(f"[FEHLER] Tabs in {ini_path.name} gefunden. YAML erlaubt keine Tabs. Ersetze Tabs durch Spaces.\n")
+        sys.exit(2)
     try:
-        cfg: Dict[str, Any] = yaml.safe_load(ini_path.read_text(encoding="utf-8")) or {}
+        cfg: Dict[str, Any] = yaml.safe_load(raw_ini) or {}
     except yaml.YAMLError as e:  # pragma: no cover
-        sys.stderr.write(f"[FEHLER] {CONFIG_FILENAME} ist keine gültige YAML-Datei: {e}\n")
+        sys.stderr.write(f"[FEHLER] {ini_path.name} ist keine gültige YAML-Datei: {e}\n")
         sys.exit(2)
 
     settings = Settings.from_cfg(cfg)
@@ -133,7 +145,7 @@ def load_config(root: Path) -> Tuple[Settings, Dict[str, Any]]:
     template = {k: v for k, v in cfg.items() if not str(k).startswith("_")}
     return settings, template
 
-# ------------------------ Frontmatter Parser ------------------------
+# ======================= Frontmatter Parser =======================
 
 def split_frontmatter(text: str) -> Tuple[Dict[str, Any], str]:
     if not text.startswith(FRONTMATTER_DELIM):
@@ -168,7 +180,7 @@ def dump_frontmatter(data: Dict[str, Any]) -> str:
     )
     return f"{FRONTMATTER_DELIM}\n{payload}{FRONTMATTER_DELIM}\n\n"
 
-# ------------------------ Pfad-Hilfen ------------------------
+# ======================= Pfad-Hilfen =======================
 
 def compute_folder_levels_up(md_path: Path) -> List[str]:
     """[folder0, folder1, folder2, ...] = Elternordner von der Datei aus nach oben."""
@@ -191,7 +203,7 @@ def compute_root_parts_down(base: Path, md_parent: Path) -> List[str]:
         return []
     return list(rel.parts)  # kann leer sein (Datei liegt direkt unter base)
 
-# ------------------------ Platzhalter & Transform ------------------------
+# ======================= Platzhalter & Transform =======================
 
 def _subst_scalar(
     val: str,
@@ -315,7 +327,7 @@ def apply_template(
     # andere Typen (int/bool/None) unverändert
     return template
 
-# ------------------------ Merge/Build-Strategie ------------------------
+# ======================= Merge/Build-Strategie =======================
 
 def should_keep_extra_key(key: str, keep_patterns: Tuple[str, ...]) -> bool:
     return any(fnmatch.fnmatch(key, pat) for pat in keep_patterns)
@@ -353,7 +365,7 @@ def build_result(existing: Dict[str, Any], applied: Dict[str, Any], *, key_mode:
 
     return result
 
-# ------------------------ Exklusionslogik ------------------------
+# ======================= Exklusionslogik =======================
 
 def is_excluded(md_path: Path, exclude_folders: Iterable[str]) -> bool:
     parts = [p.name for p in md_path.parents]
@@ -363,7 +375,32 @@ def is_excluded(md_path: Path, exclude_folders: Iterable[str]) -> bool:
                 return True
     return False
 
-# ------------------------ Hauptlogik ------------------------
+
+# ======================= Selektions-/Anker-Helfer =======================
+def nearest_named_ancestor(dir_path: Path, names: Iterable[str]) -> Path | None:
+    """Nächster Vorfahr (inkl. dir_path) mit Name in 'names', sonst None."""
+    name_set = set(names)
+    for d in [dir_path, *dir_path.parents]:
+        if d.name in name_set:
+            return d
+    return None
+
+def has_excluded_child_folder(dir_path: Path, exclude_folders: Iterable[str]) -> bool:
+    """
+    Prüft, ob der gegebene Ordner einen DIREKTEN Unterordner hat, dessen Name in 'exclude_folders' matcht.
+    Achtung: absichtliche Beschränkung auf unmittelbare Kinder, um false positives zu vermeiden.
+    """
+    try:
+        child_dirs = [p.name for p in dir_path.iterdir() if p.is_dir()]
+    except FileNotFoundError:
+        return False
+    for pat in exclude_folders:
+        for name in child_dirs:
+            if fnmatch.fnmatch(name, pat):
+                return True
+    return False
+ 
+# ======================= Hauptlogik =======================
 def find_anchor_by_name(exec_base: Path, md_path: Path, anchor_name: str) -> Path | None:
     p = md_path.parent.resolve()
     eb = exec_base.resolve()
@@ -429,10 +466,28 @@ def run(root: Path) -> None:
 
     changed = 0
     total = 0
+    include_names = tuple(settings.include_folders_by_name)
+    use_selection = bool(settings.selective_processing_active and include_names)
 
     for md in root.rglob("*.md"):
         if is_excluded(md, settings.exclude_folders):
             continue
+
+        # 2) Selektionslogik: nur Dateien unter explizit benannten Ordnern
+        if use_selection:
+            # Finde nächstgelegenen selektierten Anker (z. B. 'Klausur')
+            anchor_dir = nearest_named_ancestor(md.parent, include_names)
+            if anchor_dir is None:
+                # Datei liegt NICHT unter einem gewünschten Ordner
+                continue
+
+            # 3) ANKER-Exklusion per Ordner (integriert in exclude_folders):
+            #    Wenn der selektierte Anker einen *direkten* Unterordner hat,
+            #    dessen Name in exclude_folders matcht (z. B. '.archive'),
+            #    wird der gesamte Ankerzweig ausgelassen.
+            if has_excluded_child_folder(anchor_dir, settings.exclude_folders):
+                continue
+
         total += 1
         if process_md(md, template, exec_base=exec_base, settings=settings):
             changed += 1
@@ -442,7 +497,7 @@ def run(root: Path) -> None:
 
     print(f"\nFertig. Dateien gesamt: {total}, geändert: {changed}.")
 
-# ------------------------ CLI ------------------------
+# ======================= CLI =======================
 
 def parse_args(argv: Iterable[str]) -> argparse.Namespace:
     ap = argparse.ArgumentParser(

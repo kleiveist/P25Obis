@@ -1,11 +1,17 @@
 /.archive
+/.gitignore
+/.git
+/V.Py
+/.V.Py
+
+
 /P25ObisDatabase/.archive
 /P25ObisRenamer/.archive
 /P25OBSIDION/.archive
 /P25ObisLinks/.archive
 
-/V.Py
-/.V.Py
+/P25ObisDatabase/SE1
+
 /P25ObisDatabase/.V.Py
 /P25ObisRenamer/.V.Py
 /P25OBSIDION/.V.Py

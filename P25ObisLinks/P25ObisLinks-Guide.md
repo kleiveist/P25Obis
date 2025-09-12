@@ -221,21 +221,7 @@ Für jeden Ordner werden Inhalte in drei Kategorien sortiert:
 #### 3. Block-Generierung
 Der generierte Block hat folgende Struktur:
 ```markdown
-<!-- AUTOGEN_START -->
 
----
-#Folder
-[[Unterordner1]]
-[[Unterordner2]]
----
-#Markdown
-![[Datei1.md]]
-![[Datei2.md]]
----
-#Files
-![[Dokument.pdf]]
-![[Bild.png]]
-<!-- AUTOGEN_END -->
 ```
 
 #### 4. Sichere Integration
@@ -286,28 +272,12 @@ MeinProjekt/
 
 **Generierte MeinProjekt.md**:
 ```markdown
-<!-- AUTOGEN_START -->
 
----
-#Folder
-[[Code]]
-[[Dokumentation]]
-[[Tests]]
-<!-- AUTOGEN_END -->
 ```
 
 **Generierte Dokumentation.md**:
 ```markdown
-<!-- AUTOGEN_START -->
 
----
-#Markdown
-![[API.md]]
-![[Installation.md]]
----
-#Files
-![[Handbuch.pdf]]
-<!-- AUTOGEN_END -->
 ```
 
 ### Beispiel 2: Obsidian Vault mit Präfix
@@ -331,13 +301,7 @@ Vault/
 
 **Generierte Vault.md**:
 ```markdown
-<!-- AUTOGEN_START -->
 
----
-#Folder
-[[Data-Notizen]]
-[[Data-Projekte]]
-<!-- AUTOGEN_END -->
 ```
 
 ### Beispiel 3: Umfangreiche Wissenssammlung
@@ -365,17 +329,7 @@ Wiki/
 
 **Generierte IT.md**:
 ```markdown
-<!-- AUTOGEN_START -->
 
----
-#Folder
-[[Frameworks]]
-[[JavaScript]]
-[[Python]]
----
-#Markdown
-![[Cheatsheet.md]]
-<!-- AUTOGEN_END -->
 ```
 
 ### Beispiel 4: Integration mit bestehendem Inhalt
@@ -394,9 +348,7 @@ Hier sammle ich alle IT-bezogenen Informationen.
 - [Python.org](https://python.org)
 - [MDN Web Docs](https://developer.mozilla.org)
 
-<!-- AUTOGEN_START -->
-<!-- alte automatische Links hier -->
-<!-- AUTOGEN_END -->
+
 
 ## Persönliche Bewertungen
 Diese Sektion bleibt erhalten.
@@ -416,17 +368,7 @@ Hier sammle ich alle IT-bezogenen Informationen.
 - [Python.org](https://python.org)
 - [MDN Web Docs](https://developer.mozilla.org)
 
-<!-- AUTOGEN_START -->
 
----
-#Folder
-[[Frameworks]]
-[[JavaScript]]
-[[Python]]
----
-#Markdown
-![[Cheatsheet.md]]
-<!-- AUTOGEN_END -->
 
 ## Persönliche Bewertungen
 Diese Sektion bleibt erhalten.
@@ -559,8 +501,7 @@ with open(file, 'r', encoding='utf-8', errors='ignore') as f:
 **Überprüfung**:
 ```markdown
 <!-- Suchen Sie nach diesen Markern in Ihren Dateien -->
-<!-- AUTOGEN_START -->
-<!-- AUTOGEN_END -->
+
 ```
 
 **Wiederherstellung**:
@@ -766,9 +707,7 @@ Wiki/
 - [[Projekt-A]]
 - [[Projekt-B]]
 
-<!-- AUTOGEN_START -->
-# Auto-generierte Links hier
-<!-- AUTOGEN_END -->
+
 
 ## Externe Ressourcen
 - [Python.org](https://python.org)
@@ -886,7 +825,7 @@ def should_include_file(file_path: Path) -> bool:
 ### Fehlerbehebung
 
 **Q: Das Skript überschreibt meinen manuell geschriebenen Links-Bereich**
-A: Stellen Sie sicher, dass Ihr manueller Bereich nicht zwischen `<!-- AUTOGEN_START -->` und `<!-- AUTOGEN_END -->` steht. Nur dieser Bereich wird ersetzt.
+A: Stellen Sie sicher, dass Ihr manueller Bereich nicht zwischen `` steht. Nur dieser Bereich wird ersetzt.
 
 **Q: Manche Ordner werden nicht verarbeitet obwohl sie nicht in EXCLUDE_FOLDERS stehen**
 A: Überprüfen Sie:
@@ -935,4 +874,4 @@ A: Erweitern Sie die Link-Generierung:
 for f in md_files:
     size = f.stat().st_size
     size_str = f"({size} bytes)" if size < 1024 else f"({size//1024}KB)"
-    md_lines.append(f"![[{f.name}]] {size
+    md_lines.append(f"![[{f.name}]] {size\n
